@@ -1,0 +1,7 @@
+{
+  "name": "Wolf Style Weather",
+  "description": "A UAV-focused weather application with a neon aesthetic, featuring geolocation and flight suitability analysis.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
