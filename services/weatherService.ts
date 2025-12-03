@@ -21,7 +21,6 @@ export const fetchWeather = async (lat: number, lon: number): Promise<{ current:
     if (!data.current) throw new Error("Failed to fetch weather data");
 
     // Simulation for UAV specific metrics that standard free weather APIs don't provide easily
-    // In a real production app, you might aggregate Kp from NOAA and Satellites from a GNSS almanac.
     const simulatedKp = (Math.random() * 4).toFixed(2); 
     const simulatedSats = Math.floor(Math.random() * (24 - 12) + 12); 
 
@@ -69,11 +68,41 @@ export const searchLocation = async (query: string): Promise<LocationData[]> => 
   }
 };
 
+export const getIpLocation = async (): Promise<LocationData | null> => {
+  try {
+    // Attempt 1: ipapi.co (HTTPS compatible)
+    const response = await fetch('https://ipapi.co/json/');
+    if (!response.ok) throw new Error("Primary IP API failed");
+    
+    const data = await response.json();
+    if (data.latitude && data.longitude) {
+      return {
+        latitude: data.latitude,
+        longitude: data.longitude,
+        name: `${data.city}, ${data.country_name}`
+      };
+    }
+    throw new Error("Invalid data from primary IP API");
+  } catch (error) {
+    console.warn("Primary IP location failed, trying fallback...", error);
+    // Attempt 2: ipwho.is (Free, HTTPS)
+    try {
+      const fallbackResponse = await fetch('https://ipwho.is/');
+      const fallbackData = await fallbackResponse.json();
+      if (fallbackData.success) {
+        return {
+          latitude: fallbackData.latitude,
+          longitude: fallbackData.longitude,
+          name: `${fallbackData.city}, ${fallbackData.country}`
+        };
+      }
+    } catch (e) {
+      console.error("All IP geolocation methods failed", e);
+    }
+    return null;
+  }
+};
+
 export const getReverseGeocoding = async (lat: number, lon: number): Promise<string> => {
-    // Simple reverse geocoding approximation using OpenMeteo's timezone/location logic or a dedicated API if needed.
-    // For now, we will just display coordinates if name isn't found, or try to infer.
-    // Actually, OpenMeteo doesn't have a direct reverse geocode endpoint in the free tier easily accessible for names,
-    // so we might default to "Current Location" or use BigDataCloud free client-side API if we wanted perfectly accurate city names.
-    // For this demo, we'll try a rough fetch or just return a formatted string.
     return `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
 }

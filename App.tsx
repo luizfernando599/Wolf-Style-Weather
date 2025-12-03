@@ -11,9 +11,10 @@ import {
   RefreshCw,
   AlertTriangle,
   CheckCircle,
-  XCircle
+  XCircle,
+  Edit3
 } from 'lucide-react';
-import { fetchWeather, searchLocation } from './services/weatherService';
+import { fetchWeather, searchLocation, getIpLocation } from './services/weatherService';
 import { getPilotAdvice } from './services/geminiService';
 import { WeatherData, LocationData, ForecastData, FlyStatus } from './types';
 import NeonCard from './components/NeonCard';
@@ -32,38 +33,52 @@ export default function App() {
   const [aiAdvice, setAiAdvice] = useState<string>('');
   const [analyzing, setAnalyzing] = useState(false);
 
-  // Initial Load - Get Geolocation
+  // Initial Load - Get Geolocation (GPS -> IP Fallback)
   useEffect(() => {
     getUserLocation();
   }, []);
 
-  const getUserLocation = () => {
+  const getUserLocation = async () => {
     setLoading(true);
+    setError(null);
+
+    const handleSuccess = (loc: LocationData) => {
+        setLocation(loc);
+        // Weather fetch is handled by the useEffect watching 'location'
+    };
+
+    const tryIpLocation = async () => {
+        try {
+            const ipLoc = await getIpLocation();
+            if (ipLoc) {
+                handleSuccess(ipLoc);
+            } else {
+                setError("Could not auto-detect location. Please search manually.");
+                setLoading(false);
+            }
+        } catch (e) {
+            setError("Location services unavailable.");
+            setLoading(false);
+        }
+    };
+
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
-          const loc: LocationData = {
+          handleSuccess({
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
-            name: "Current Location" 
-          };
-          setLocation(loc);
-          // We will fetch weather in the effect dependent on 'location'
+            name: "Current GPS Location" 
+          });
         },
         (err) => {
-          // Fallback location if denied (e.g. New York) just to show app works
-          console.warn("Geolocation denied, using fallback", err);
-          const fallback: LocationData = {
-             latitude: 40.7128,
-             longitude: -74.0060,
-             name: "New York, US (Fallback)"
-          };
-          setLocation(fallback);
-        }
+          console.warn("Geolocation denied or failed, trying IP...", err);
+          tryIpLocation();
+        },
+        { timeout: 7000 }
       );
     } else {
-      setError("Geolocation not supported by this browser.");
-      setLoading(false);
+        tryIpLocation();
     }
   };
 
@@ -177,7 +192,7 @@ export default function App() {
             onClick={() => setShowSearch(!showSearch)}
             className="p-2 rounded-full hover:bg-white/10 transition-colors text-[#00c2f7]"
         >
-            <MapPin />
+            <Search size={24} />
         </button>
       </header>
 
@@ -205,13 +220,13 @@ export default function App() {
                             {loc.name}
                         </button>
                     ))}
-                    {searchResults.length === 0 && searchQuery && <p className="text-gray-500 text-xs text-center">No results or type to search</p>}
+                    {searchResults.length === 0 && searchQuery && <p className="text-gray-500 text-xs text-center">No results found</p>}
                     
                     <button 
-                        onClick={getUserLocation} 
+                        onClick={() => { getUserLocation(); setShowSearch(false); }} 
                         className="mt-2 text-[#00c2f7] text-xs flex items-center justify-center gap-2 hover:underline"
                     >
-                        <Navigation size={12}/> Use My Current Location
+                        <Navigation size={12}/> Auto-Detect Location
                     </button>
                 </div>
             </div>
@@ -221,14 +236,23 @@ export default function App() {
       {/* Main Content */}
       <main className="w-full max-w-4xl px-4 z-10 flex-grow">
         
-        {/* Location Display */}
-        <div className="flex items-center justify-center gap-2 mb-6">
-            <MapPin className="text-[#00708f] w-4 h-4" />
-            <span className="text-gray-400 text-sm uppercase tracking-wider">
-                {location ? location.name.replace(', undefined', '') : 'Locating...'}
-            </span>
-            <button onClick={updateWeather} className="ml-2 text-[#00708f] hover:text-white transition-colors">
-                <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+        {/* Location Display & Change Option */}
+        <div className="flex flex-col items-center justify-center mb-8">
+            <div className="flex items-center gap-2">
+                <MapPin className="text-[#00708f] w-5 h-5" />
+                <span className="text-white text-lg font-tech uppercase tracking-wider shadow-[#00c2f7] drop-shadow-[0_0_5px_rgba(0,194,247,0.5)]">
+                    {location ? location.name.replace(', undefined', '') : 'Locating...'}
+                </span>
+                <button onClick={updateWeather} className="ml-2 text-[#00708f] hover:text-white transition-colors" title="Refresh Data">
+                    <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
+                </button>
+            </div>
+            {/* Explicit "Change Location" button below as requested */}
+            <button 
+                onClick={() => setShowSearch(true)}
+                className="mt-2 text-xs text-gray-500 hover:text-[#00c2f7] flex items-center gap-1 transition-colors border-b border-transparent hover:border-[#00c2f7]"
+            >
+                <Edit3 size={10} /> Not here? Change Location
             </button>
         </div>
 
@@ -242,7 +266,7 @@ export default function App() {
         ) : error ? (
             <div className="text-red-500 text-center p-8 border border-red-900 bg-red-900/10 rounded-xl">
                 {error}
-                <button onClick={updateWeather} className="block mx-auto mt-4 px-4 py-2 bg-red-900 text-white rounded">Retry</button>
+                <button onClick={getUserLocation} className="block mx-auto mt-4 px-4 py-2 bg-red-900 text-white rounded">Retry Detection</button>
             </div>
         ) : weather ? (
             <>
