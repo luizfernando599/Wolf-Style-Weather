@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Wind, 
@@ -12,7 +13,8 @@ import {
   AlertTriangle,
   CheckCircle,
   XCircle,
-  Edit3
+  Edit3,
+  Gauge
 } from 'lucide-react';
 import { fetchWeather, searchLocation, getIpLocation } from './services/weatherService';
 import { getPilotAdvice } from './services/geminiService';
@@ -44,7 +46,6 @@ export default function App() {
 
     const handleSuccess = (loc: LocationData) => {
         setLocation(loc);
-        // Weather fetch is handled by the useEffect watching 'location'
     };
 
     const tryIpLocation = async () => {
@@ -297,21 +298,21 @@ export default function App() {
                         color={weather.windSpeed > 30 ? 'danger' : weather.windSpeed > 20 ? 'warning' : 'default'}
                     />
 
-                    {/* Satellites - Critical for Drone */}
+                    {/* Satellites - Simulated Deterministic */}
                     <NeonCard 
                         title="Sats Visible"
                         value={weather.satellites}
                         icon={<Globe />}
-                        subValue="GPS + GLONASS (Est)"
+                        subValue="Orbital Est."
                         color={weather.satellites < 8 ? 'danger' : weather.satellites < 12 ? 'warning' : 'success'}
                     />
 
-                    {/* KP Index - Magnetic interference */}
+                    {/* KP Index - Simulated Deterministic */}
                     <NeonCard 
                         title="Kp Index"
                         value={weather.kpIndex}
                         icon={<Activity />}
-                        subValue="Geomagnetic Storm"
+                        subValue="Solar Model"
                         color={weather.kpIndex > 5 ? 'danger' : weather.kpIndex > 4 ? 'warning' : 'success'}
                     />
 
@@ -333,13 +334,13 @@ export default function App() {
                         color={weather.visibility < 1000 ? 'danger' : 'default'}
                     />
 
-                    {/* Cloud Cover */}
+                    {/* Pressure (New Real Data) */}
                     <NeonCard 
-                        title="Cloud Cover"
-                        value={weather.cloudCover}
-                        unit="%"
-                        icon={<CloudRain />}
-                        subValue={weather.weatherCode > 50 ? "Precipitation Likely" : "Dry"}
+                        title="Pressure"
+                        value={Math.round(weather.pressure)}
+                        unit="hPa"
+                        icon={<Gauge />}
+                        subValue="QNH / Sea Level"
                     />
                 </div>
 

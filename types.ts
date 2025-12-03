@@ -1,3 +1,4 @@
+
 export interface WeatherData {
   temperature: number;
   windSpeed: number;
@@ -5,8 +6,9 @@ export interface WeatherData {
   windGusts: number;
   visibility: number; // in meters
   cloudCover: number; // percentage
-  kpIndex: number; // Simulated for this demo as real-time Kp APIs are rare/paid
-  satellites: number; // Simulated/Estimated
+  pressure: number; // hPa
+  kpIndex: number; // Calculated model
+  satellites: number; // Calculated model
   isDay: boolean;
   weatherCode: number;
 }
